@@ -1,53 +1,59 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Embedding, LSTM, Dense, SpatialDropout1D
-from tensorflow.keras.utils import to_categorical
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-import string
+from tensorflow.keras.layers import Embedding, LSTM, Dense
+from tensorflow.keras.callbacks import EarlyStopping
 
-# Load and preprocess data
-data = pd.read_csv('spotify_dataset.csv')
-data['lyrics'] = data['lyrics'].str.lower()
-stop_words = set(stopwords.words('english'))
-data['lyrics'] = data['lyrics'].apply(lambda x: ' '.join([word for word in word_tokenize(x) if word not in stop_words and word not in string.punctuation]))
+# Load the dataset
+df = pd.read_csv("Spotify Million Song Dataset_exported.csv")
 
-# Tokenize and pad sequences
-max_words = 5000
-max_len = 100
-tokenizer = Tokenizer(num_words=max_words, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~', lower=True)
-tokenizer.fit_on_texts(data['lyrics'].values)
-X = tokenizer.texts_to_sequences(data['lyrics'].values)
-X = pad_sequences(X, maxlen=max_len)
+# Preprocess the text
+indent = ["\n", "\r", "\t"]
+def remove_indents(text, indent):
+    for elements in indent:
+        text = text.replace(elements, '')
+    return text
 
-# Train-Test Split
-Y = pd.get_dummies(data['song_name']).values
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+df['Lyrics'] = df['Lyrics'].str.lower()
+df['Lyrics'] = df['Lyrics'].apply(lambda elements: remove_indents(elements, indent))
 
-# Build LSTM Model
-embedding_dim = 128
-lstm_out = 196
+# Tokenize the text
+tokenizer = Tokenizer()
+tokenizer.fit_on_texts(df['Lyrics'])
+sequences = tokenizer.texts_to_sequences(df['Lyrics'])
+
+# Pad the sequences
+max_length = max(len(seq) for seq in sequences)
+padded_sequences = pad_sequences(sequences, maxlen=max_length, padding='post')
+
+# Prepare the labels
+label_encoder = LabelEncoder()
+df['artist_encoded'] = label_encoder.fit_transform(df['Artist'])
+df['song_encoded'] = label_encoder.fit_transform(df['Song'])
+
+# Train-test split
+X_train, X_test, y_train_artist, y_test_artist, y_train_song, y_test_song = train_test_split(
+    padded_sequences, df['artist_encoded'], df['song_encoded'], test_size=0.2, random_state=42)
+
+# Define the model
+embedding_dim = 300
+lstm_out = 300
+units = 100
 
 model = Sequential()
-model.add(Embedding(max_words, embedding_dim, input_length=X.shape[1]))
-model.add(SpatialDropout1D(0.4))
-model.add(LSTM(lstm_out, dropout=0.2, recurrent_dropout=0.2))
-model.add(Dense(Y.shape[1], activation='softmax'))
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.add(Embedding(input_dim=len(tokenizer.word_index)+1, output_dim=embedding_dim, input_length=max_length))
+model.add(LSTM(units=units))
+model.add(Dense(units=len(label_encoder.classes_), activation='softmax')) # Adjust units based on the number of classes
 
-# Train Model
-batch_size = 32
-model.fit(X_train, Y_train, epochs=10, batch_size=batch_size, validation_data=(X_test, Y_test), verbose=2)
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-# Model Testing
-test_text = "the sun is shining bright"
-test_text = tokenizer.texts_to_sequences([test_text])
-test_text = pad_sequences(test_text, maxlen=max_len)
-prediction = model.predict(test_text)
-predicted_song_index = np.argmax(prediction)
-predicted_song_name = tokenizer.index_word[predicted_song_index]
-print(f"The predicted song is: {predicted_song_name}")
+# Train the model
+history = model.fit(X_train, y_train_artist, epochs=25, batch_size=64, validation_split=0.2, callbacks=[EarlyStopping(patience=3)])
+
+# Evaluate the model
+test_loss, test_accuracy = model.evaluate(X_test, y_test_artist)
+print(f'Test loss: {test_loss}, Test accuracy: {test_accuracy}')
