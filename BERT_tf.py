@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 
 # Read the dataset
-df = pd.read_csv("/content/Spotify Million Song Dataset_exported.csv", error_bad_lines=False, engine="python")
+df = pd.read_csv("Spotify Million Song Dataset_exported.csv", error_bad_lines=False, engine="python")
 
 # Drop unnecessary columns
 df = df.drop(['link'], axis=1)
@@ -34,6 +34,7 @@ tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=Tru
 encoded_inputs = tokenizer(df['combined'].tolist(), padding=True, truncation=True, max_length=512, return_tensors='tf')
 
 # Encode combined labels
+from sklearn.preprocessing import LabelEncoder
 label_encoder = LabelEncoder()
 df['combined_encoded'] = label_encoder.fit_transform(df['combined'])
 
