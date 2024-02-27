@@ -1,6 +1,0 @@
-lower
-remove indent
-remove possesive words
-remove puntuations
-remove stop words
-tokenize words
