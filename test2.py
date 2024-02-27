@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
+from tqdm import tqdm
 import string
 def remove_punctuation(input_string):
     translation_table = str.maketrans('', '', string.punctuation)
@@ -14,10 +14,21 @@ def remove_words_with_apostrophes(input_string):
     result = re.sub(pattern, '', input_string)
     return result
 
-df=pd.read_csv("spliced_spotify_dataset.csv")
+#df=pd.read_csv("spliced_spotify_dataset.csv")
 #df_real = pd.read_csv("Spotify Million Song Dataset_exported.csv")
+with tqdm(total=628932, desc="Loading dependencies : ") as pbar:
+    df_list = []
+    df = pd.read_csv("spliced_spotify_dataset.csv", iterator=True, chunksize=1000)
+    for chunk in df:
+        df_list.append(chunk)
+        pbar.update(len(chunk))
+
+# Concatenate the list of DataFrames into a single DataFrame
+print("\n...............loading,please wait...............\n")
+df = pd.concat(df_list)
 
 # Vectorize the data
+print("...............Data is being vectorized...............\n")
 vectorizer = TfidfVectorizer()
 X = vectorizer.fit_transform(df['text'])
 
@@ -40,6 +51,6 @@ unique_song = df.iloc[unique_song_index]
 print("..........Finding..........\n")
 
 print("<-- Result found --> \n")
-print(f'Song: {unique_song["song"]}\n')
-print(f'Artist: {unique_song["artist"]}\n')
+print(f'Song : {unique_song["song"]}\n')
+print(f'Artist : {unique_song["artist"]}\n')
 #print(f'Lyrics: {unique_song["text"]}')
