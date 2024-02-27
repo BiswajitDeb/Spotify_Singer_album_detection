@@ -1,7 +1,7 @@
 
 # Song title & Artist recognition
 
-The program is built on the [Spotify Million song Dataset](https://www.kaggle.com/datasets/joebeachcapital/57651-spotify-songs). User have to give a snippet of lyrics of a song (the song must be present in the dataset) and the program will give outputs with the Song's name and the Artist's name for the snippet.
+The program is built on the [Spotify Million song Dataset](https://www.kaggle.com/datasets/joebeachcapital/57651-spotify-songs). User have to give a snippet of lyrics (at least one line) of a song (the song must be present in the dataset) and the program will give outputs with the Song's name and the Artist's name for the snippet.
 
 
 
